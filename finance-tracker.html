@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MONEYFLOW · Finance Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #181818;
+    --border: #2a2a2a;
+    --accent: #c8f55a;
+    --accent2: #f5a55a;
+    --text: #f0f0f0;
+    --muted: #666;
+    --income: #5af5a0;
+    --expense: #f55a7a;
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* ── LOGIN SCREEN ── */
+  #loginScreen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 500;
+    padding: 24px;
+  }
+
+  #loginScreen.hidden { display: none; }
+
+  .login-box {
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .login-logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 2rem;
+    letter-spacing: -0.03em;
+    margin-bottom: 4px;
+  }
+
+  .login-logo span { color: var(--accent); }
+
+  .login-sub {
+    color: var(--muted);
+    font-size: 0.8rem;
+    margin-bottom: 40px;
+  }
+
+  .login-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+  }
+
+  .login-mode-toggle {
+    display: flex;
+    gap: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    margin-bottom: 28px;
+  }
+
+  .login-mode-btn {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+
+  .login-mode-btn.active {
+    background: var(--accent);
+    color: #000;
+    font-weight: 500;
+  }
+
+  /* PIN pad */
+  .pin-display {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 28px;
+  }
+
+  .pin-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    transition: all 0.15s;
+  }
+
+  .pin-dot.filled {
+    background: var(--accent);
+    border-color: var(--accent);
+    transform: scale(1.1);
+  }
+
+  .pin-pad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .pin-key {
+    aspect-ratio: 1;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface2);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pin-key:hover { background: #222; border-color: var(--accent); }
+  .pin-key:active { transform: scale(0.94); }
+
+  .pin-key.delete { font-size: 1rem; color: var(--muted); }
+  .pin-key.zero { grid-column: 2; }
+
+  /* Password mode */
+  .password-field { position: relative; margin-bottom: 20px; }
+
+  .password-field input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.95rem;
+    padding: 12px 44px 12px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .password-field input:focus { border-color: var(--accent); }
+
+  .toggle-pw {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0;
+  }
+
+  .login-error {
+    color: var(--expense);
+    font-size: 0.75rem;
+    text-align: center;
+    margin-bottom: 16px;
+    min-height: 18px;
+    letter-spacing: 0.03em;
+  }
+
+  .login-hint {
+    color: var(--muted);
+    font-size: 0.7rem;
+    text-align: center;
+    margin-top: 16px;
+    line-height: 1.5;
+  }
+
+  /* first-time setup prompt */
+  .setup-prompt {
+    background: rgba(200,245,90,0.06);
+    border: 1px solid rgba(200,245,90,0.2);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 0.75rem;
+    color: var(--accent);
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  /* ── APP SHELL ── */
+  #appShell { display: none; }
+  #appShell.visible { display: block; }
+
+  header {
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    letter-spacing: -0.02em;
+  }
+
+  .logo span { color: var(--accent); }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+  }
+
+  .nav-tab {
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .nav-tab.active { background: var(--accent); color: #000; font-weight: 500; }
+  .nav-tab:hover:not(.active) { color: var(--text); }
+
+  .logout-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    padding: 6px 12px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+  }
+
+  .logout-btn:hover { border-color: var(--expense); color: var(--expense); }
+
+  .sync-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  .sync-dot.synced { background: var(--income); }
+  .sync-dot.syncing { background: var(--accent2); animation: pulse 1s infinite; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 32px; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ── SETUP ── */
+  .setup-header { margin-bottom: 32px; }
+  .setup-header h1 { font-family:'Syne',sans-serif; font-size:2rem; font-weight:800; margin-bottom:8px; }
+  .setup-header p { color:var(--muted); font-size:0.85rem; }
+
+  .accounts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px,1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .account-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: relative;
+  }
+
+  .account-card .remove-btn {
+    position: absolute; top:12px; right:12px;
+    background:none; border:none; color:var(--muted);
+    cursor:pointer; font-size:1.1rem; line-height:1;
+    transition:color 0.2s;
+  }
+
+  .account-card .remove-btn:hover { color:var(--expense); }
+
+  .field-label {
+    font-size:0.7rem; letter-spacing:0.1em;
+    text-transform:uppercase; color:var(--muted); margin-bottom:8px;
+  }
+
+  input, select, textarea {
+    width:100%; background:var(--surface2); border:1px solid var(--border);
+    border-radius:8px; color:var(--text); font-family:'DM Mono',monospace;
+    font-size:0.9rem; padding:10px 14px; outline:none; transition:border-color 0.2s;
+  }
+
+  input:focus, select:focus, textarea:focus { border-color:var(--accent); }
+  input.amount-input { font-size:1.2rem; font-weight:500; margin-top:6px; }
+
+  .field-group { margin-bottom:16px; }
+
+  .add-account-btn {
+    display:flex; align-items:center; gap:8px;
+    background:transparent; border:1px dashed var(--border);
+    border-radius:var(--radius); color:var(--muted);
+    font-family:'DM Mono',monospace; font-size:0.85rem;
+    padding:20px; cursor:pointer; width:100%;
+    transition:all 0.2s; justify-content:center;
+  }
+
+  .add-account-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+  .btn-primary {
+    background:var(--accent); color:#000; border:none;
+    border-radius:8px; font-family:'Syne',sans-serif;
+    font-size:0.9rem; font-weight:700; padding:14px 32px;
+    cursor:pointer; letter-spacing:0.02em;
+    transition:opacity 0.2s, transform 0.1s;
+  }
+
+  .btn-primary:hover { opacity:0.9; }
+  .btn-primary:active { transform:scale(0.98); }
+
+  .btn-secondary {
+    background:transparent; color:var(--text);
+    border:1px solid var(--border); border-radius:8px;
+    font-family:'DM Mono',monospace; font-size:0.85rem;
+    padding:10px 20px; cursor:pointer; transition:border-color 0.2s;
+  }
+
+  .btn-secondary:hover { border-color:var(--accent); color:var(--accent); }
+
+  /* ── DASHBOARD ── */
+  .net-worth-card {
+    background: linear-gradient(135deg,#1a1f0e 0%,#111 60%);
+    border:1px solid #3a4a1a; border-radius:var(--radius);
+    padding:32px; margin-bottom:28px; position:relative; overflow:hidden;
+  }
+
+  .net-worth-card::after {
+    content:''; position:absolute; top:-60px; right:-60px;
+    width:200px; height:200px;
+    background:radial-gradient(circle,rgba(200,245,90,0.08) 0%,transparent 70%);
+    pointer-events:none;
+  }
+
+  .net-worth-label {
+    font-size:0.7rem; letter-spacing:0.15em;
+    text-transform:uppercase; color:var(--accent); margin-bottom:8px;
+  }
+
+  .net-worth-amount {
+    font-family:'Syne',sans-serif; font-size:3rem;
+    font-weight:800; letter-spacing:-0.03em; line-height:1;
+  }
+
+  .accounts-row {
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+    gap:12px; margin-bottom:28px;
+  }
+
+  .account-balance-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:18px; transition:border-color 0.2s;
+  }
+
+  .account-balance-card:hover { border-color:var(--accent); }
+  .account-name { font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+  .account-balance { font-family:'Syne',sans-serif; font-size:1.4rem; font-weight:700; }
+
+  .tx-form-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:28px; margin-bottom:28px;
+  }
+
+  .tx-form-card h2 { font-family:'Syne',sans-serif; font-size:1.1rem; font-weight:700; margin-bottom:20px; }
+
+  .tx-type-toggle { display:flex; gap:8px; margin-bottom:20px; }
+
+  .tx-type-btn {
+    flex:1; padding:12px; border-radius:8px;
+    border:1px solid var(--border); background:transparent;
+    color:var(--muted); font-family:'Syne',sans-serif;
+    font-size:0.85rem; font-weight:600; cursor:pointer;
+    transition:all 0.2s; letter-spacing:0.05em;
+  }
+
+  .tx-type-btn.income.active { background:rgba(90,245,160,0.1); border-color:var(--income); color:var(--income); }
+  .tx-type-btn.expense.active { background:rgba(245,90,122,0.1); border-color:var(--expense); color:var(--expense); }
+
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .form-actions { display:flex; gap:12px; margin-top:20px; align-items:center; }
+
+  /* ── HISTORY ── */
+  .history-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+  .history-header h2 { font-family:'Syne',sans-serif; font-size:1.1rem; font-weight:700; }
+
+  .tx-list { display:flex; flex-direction:column; gap:8px; }
+
+  .tx-item {
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; padding:14px 18px;
+    animation:slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+
+  .tx-left { display:flex; align-items:center; gap:14px; }
+  .tx-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .tx-dot.income { background:var(--income); }
+  .tx-dot.expense { background:var(--expense); }
+  .tx-desc { font-size:0.9rem; margin-bottom:2px; }
+  .tx-meta { font-size:0.72rem; color:var(--muted); }
+  .tx-amount { font-family:'Syne',sans-serif; font-size:1rem; font-weight:700; }
+  .tx-amount.income { color:var(--income); }
+  .tx-amount.expense { color:var(--expense); }
+
+  .empty-state { text-align:center; padding:60px 20px; color:var(--muted); font-size:0.85rem; }
+  .empty-state .icon { font-size:2.5rem; margin-bottom:12px; }
+
+  .divider { border:none; border-top:1px solid var(--border); margin:24px 0; }
+
+  .toast {
+    position:fixed; bottom:24px; right:24px;
+    background:var(--accent); color:#000;
+    font-family:'Syne',sans-serif; font-size:0.85rem; font-weight:600;
+    padding:12px 20px; border-radius:8px; z-index:9000;
+    transform:translateY(80px); opacity:0;
+    transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .toast.show { transform:translateY(0); opacity:1; }
+  .toast.error { background:var(--expense); color:#fff; }
+
+  select option { background:#1a1a1a; }
+
+  @media (max-width:600px) {
+    header { padding:16px; flex-wrap:wrap; gap:12px; }
+    main { padding:16px; }
+    .form-row { grid-template-columns:1fr; }
+    .net-worth-amount { font-size:2rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     LOGIN SCREEN
+════════════════════════════════════════════════ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">MONEY<span>FLOW.</span></div>
+    <div class="login-sub">Personal Finance Tracker</div>
+
+    <div class="login-card">
+      <!-- mode toggle -->
+      <div class="login-mode-toggle">
+        <button class="login-mode-btn active" id="modePinBtn" onclick="switchLoginMode('pin')">PIN</button>
+        <button class="login-mode-btn" id="modePwBtn" onclick="switchLoginMode('password')">Password</button>
+      </div>
+
+      <!-- first-time hint -->
+      <div class="setup-prompt" id="firstTimeHint" style="display:none;">
+        First time? Enter a new PIN or password to set it up.
+      </div>
+
+      <!-- error -->
+      <div class="login-error" id="loginError"></div>
+
+      <!-- PIN mode -->
+      <div id="pinMode">
+        <div class="pin-display" id="pinDisplay"></div>
+        <div class="pin-pad">
+          <button class="pin-key" onclick="pinPress('1')">1</button>
+          <button class="pin-key" onclick="pinPress('2')">2</button>
+          <button class="pin-key" onclick="pinPress('3')">3</button>
+          <button class="pin-key" onclick="pinPress('4')">4</button>
+          <button class="pin-key" onclick="pinPress('5')">5</button>
+          <button class="pin-key" onclick="pinPress('6')">6</button>
+          <button class="pin-key" onclick="pinPress('7')">7</button>
+          <button class="pin-key" onclick="pinPress('8')">8</button>
+          <button class="pin-key" onclick="pinPress('9')">9</button>
+          <button class="pin-key zero" onclick="pinPress('0')">0</button>
+          <button class="pin-key delete" onclick="pinDelete()">⌫</button>
+        </div>
+        <div class="login-hint">4–6 digits</div>
+      </div>
+
+      <!-- Password mode -->
+      <div id="passwordMode" style="display:none;">
+        <div class="password-field">
+          <input type="password" id="pwInput" placeholder="Enter password" onkeydown="if(event.key==='Enter')submitPassword()" />
+          <button class="toggle-pw" onclick="togglePwVis()" id="pwEye">👁</button>
+        </div>
+        <button class="btn-primary" style="width:100%;" onclick="submitPassword()">Unlock</button>
+        <div class="login-hint">Press Enter or click Unlock</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     APP SHELL
+════════════════════════════════════════════════ -->
+<div id="appShell">
+  <header>
+    <div class="logo">MONEY<span>FLOW.</span></div>
+    <div class="nav-tabs">
+      <button class="nav-tab" onclick="showView('dashboard',this)">Dashboard</button>
+      <button class="nav-tab" onclick="showView('setup',this)">Accounts</button>
+      <button class="nav-tab" onclick="showView('history',this)">History</button>
+    </div>
+    <div class="header-right">
+      <div class="sync-badge">
+        <div class="sync-dot" id="syncDot"></div>
+        <span id="syncLabel">LOCAL</span>
+      </div>
+      <button class="logout-btn" onclick="logout()">Lock</button>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- DASHBOARD -->
+    <div class="view" id="view-dashboard">
+      <div class="net-worth-card">
+        <div class="net-worth-label">Total Net Worth</div>
+        <div class="net-worth-amount" id="netWorth">₦0</div>
+      </div>
+      <div class="accounts-row" id="accountsRow"></div>
+      <hr class="divider">
+      <div class="tx-form-card">
+        <h2>Log Transaction</h2>
+        <div class="tx-type-toggle">
+          <button class="tx-type-btn income active" id="btnIncome" onclick="setTxType('income')">↑ INCOME</button>
+          <button class="tx-type-btn expense" id="btnExpense" onclick="setTxType('expense')">↓ EXPENSE</button>
+        </div>
+        <div class="form-row">
+          <div class="field-group">
+            <div class="field-label">Amount (₦)</div>
+            <input type="number" id="txAmount" placeholder="0.00" min="0" />
+          </div>
+          <div class="field-group">
+            <div class="field-label">Account</div>
+            <select id="txAccount"></select>
+          </div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Description</div>
+          <input type="text" id="txDesc" placeholder="e.g. Jumia payout – week 22" />
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="logTransaction()">Log Transaction</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACCOUNTS SETUP -->
+    <div class="view" id="view-setup">
+      <div class="setup-header">
+        <h1>Your Accounts</h1>
+        <p>Add your cash and bank accounts with their current balances.</p>
+      </div>
+      <div class="accounts-grid" id="accountsGrid"></div>
+      <button class="add-account-btn" onclick="addAccountCard()">＋ Add Account</button>
+      <hr class="divider">
+      <div style="display:flex; gap:12px; align-items:center;">
+        <button class="btn-primary" onclick="saveAccounts()">Save Accounts</button>
+        <span style="font-size:0.75rem; color:var(--muted);">Balances saved to Google Sheets</span>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="view" id="view-history">
+      <div class="history-header">
+        <h2>Transaction History</h2>
+        <button class="btn-secondary" onclick="clearHistory()">Clear All</button>
+      </div>
+      <div class="tx-list" id="txList"></div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ─── CONFIG ───────────────────────────────────────
+  const APPS_SCRIPT_URL = 'APPS_SCRIPT_URL';
+  const PIN_LENGTH_MIN = 4;
+  const PIN_LENGTH_MAX = 6;
+  const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 min auto-lock
+
+  // ─── STATE ────────────────────────────────────────
+  let accounts = JSON.parse(localStorage.getItem('flow_accounts') || '[]');
+  let transactions = JSON.parse(localStorage.getItem('flow_transactions') || '[]');
+  let txType = 'income';
+  let accountCardCount = 0;
+
+  // Auth state
+  let pinBuffer = '';
+  let loginMode = 'pin';
+  let sessionTimer = null;
+
+  // ─── SECURITY HELPERS ─────────────────────────────
+  function simpleHash(str) {
+    // Basic hash — good enough for local storage gate
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return hash.toString(16);
+  }
+
+  function getStoredCreds() {
+    return {
+      pin: localStorage.getItem('flow_pin_hash'),
+      pw: localStorage.getItem('flow_pw_hash'),
+    };
+  }
+
+  function isFirstTime() {
+    const c = getStoredCreds();
+    return !c.pin && !c.pw;
+  }
+
+  // ─── LOGIN SCREEN INIT ────────────────────────────
+  function initLogin() {
+    renderPinDots();
+    if (isFirstTime()) {
+      document.getElementById('firstTimeHint').style.display = 'block';
+    }
+  }
+
+  function switchLoginMode(mode) {
+    loginMode = mode;
+    pinBuffer = '';
+    document.getElementById('loginError').textContent = '';
+    document.getElementById('pinMode').style.display = mode === 'pin' ? 'block' : 'none';
+    document.getElementById('passwordMode').style.display = mode === 'password' ? 'block' : 'none';
+    document.getElementById('modePinBtn').classList.toggle('active', mode === 'pin');
+    document.getElementById('modePwBtn').classList.toggle('active', mode === 'password');
+    if (mode === 'pin') renderPinDots();
+    if (mode === 'password') document.getElementById('pwInput').focus();
+  }
+
+  // ─── PIN MODE ─────────────────────────────────────
+  function renderPinDots() {
+    const display = document.getElementById('pinDisplay');
+    display.innerHTML = '';
+    for (let i = 0; i < PIN_LENGTH_MAX; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'pin-dot' + (i < pinBuffer.length ? ' filled' : '');
+      display.appendChild(dot);
+    }
+  }
+
+  function pinPress(digit) {
+    if (pinBuffer.length >= PIN_LENGTH_MAX) return;
+    pinBuffer += digit;
+    renderPinDots();
+    document.getElementById('loginError').textContent = '';
+
+    if (pinBuffer.length >= PIN_LENGTH_MIN) {
+      // Auto-submit after short delay once min length reached and user stops typing
+      clearTimeout(window._pinAutoSubmit);
+      if (pinBuffer.length === PIN_LENGTH_MAX) {
+        submitPin();
+      } else {
+        window._pinAutoSubmit = setTimeout(submitPin, 600);
+      }
+    }
+  }
+
+  function pinDelete() {
+    clearTimeout(window._pinAutoSubmit);
+    pinBuffer = pinBuffer.slice(0, -1);
+    renderPinDots();
+    document.getElementById('loginError').textContent = '';
+  }
+
+  function submitPin() {
+    const creds = getStoredCreds();
+    if (!creds.pin) {
+      // First time — set PIN
+      localStorage.setItem('flow_pin_hash', simpleHash(pinBuffer));
+      showLoginSuccess();
+    } else {
+      if (simpleHash(pinBuffer) === creds.pin) {
+        showLoginSuccess();
+      } else {
+        document.getElementById('loginError').textContent = 'Incorrect PIN. Try again.';
+        pinBuffer = '';
+        renderPinDots();
+      }
+    }
+  }
+
+  // ─── PASSWORD MODE ────────────────────────────────
+  function submitPassword() {
+    const val = document.getElementById('pwInput').value.trim();
+    if (!val) { document.getElementById('loginError').textContent = 'Enter a password.'; return; }
+    const creds = getStoredCreds();
+    if (!creds.pw) {
+      // First time — set password
+      localStorage.setItem('flow_pw_hash', simpleHash(val));
+      showLoginSuccess();
+    } else {
+      if (simpleHash(val) === creds.pw) {
+        showLoginSuccess();
+      } else {
+        document.getElementById('loginError').textContent = 'Incorrect password. Try again.';
+        document.getElementById('pwInput').value = '';
+      }
+    }
+  }
+
+  function togglePwVis() {
+    const inp = document.getElementById('pwInput');
+    const eye = document.getElementById('pwEye');
+    if (inp.type === 'password') { inp.type = 'text'; eye.textContent = '🙈'; }
+    else { inp.type = 'password'; eye.textContent = '👁'; }
+  }
+
+  // ─── SESSION ──────────────────────────────────────
+  function showLoginSuccess() {
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('appShell').classList.add('visible');
+    startSession();
+    // Boot app
+    if (accounts.length > 0) {
+      renderAccountCards();
+      renderDashboard();
+      renderHistory();
+    } else {
+      addAccountCard({ name: 'Cash', balance: '' });
+      addAccountCard({ name: 'GTBank', balance: '' });
+    }
+    // Default to dashboard view
+    showView('dashboard', document.querySelector('.nav-tab'));
+  }
+
+  function startSession() {
+    resetSessionTimer();
+    ['click','keydown','touchstart'].forEach(e => document.addEventListener(e, resetSessionTimer));
+  }
+
+  function resetSessionTimer() {
+    clearTimeout(sessionTimer);
+    sessionTimer = setTimeout(logout, SESSION_TIMEOUT_MS);
+  }
+
+  function logout() {
+    clearTimeout(sessionTimer);
+    ['click','keydown','touchstart'].forEach(e => document.removeEventListener(e, resetSessionTimer));
+    document.getElementById('appShell').classList.remove('visible');
+    document.getElementById('loginScreen').classList.remove('hidden');
+    pinBuffer = '';
+    renderPinDots();
+    document.getElementById('loginError').textContent = '';
+    if (document.getElementById('pwInput')) document.getElementById('pwInput').value = '';
+    showToast('MoneyFlow locked.');
+  }
+
+  // ─── VIEW SWITCHING ───────────────────────────────
+  function showView(name, tabEl) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    if (tabEl) tabEl.classList.add('active');
+    if (name === 'dashboard') renderDashboard();
+    if (name === 'history') renderHistory();
+  }
+
+  // ─── ACCOUNT CARDS ────────────────────────────────
+  function addAccountCard(data = {}) {
+    const grid = document.getElementById('accountsGrid');
+    const id = ++accountCardCount;
+    const card = document.createElement('div');
+    card.className = 'account-card';
+    card.dataset.id = id;
+    card.innerHTML = `
+      <button class="remove-btn" onclick="removeCard(${id})">×</button>
+      <div class="field-group">
+        <div class="field-label">Account Name</div>
+        <input type="text" placeholder="e.g. Opay, Cash, GTBank" value="${data.name||''}" class="acct-name"/>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Current Balance (₦)</div>
+        <input type="number" placeholder="0.00" value="${data.balance||''}" class="acct-balance amount-input" min="0"/>
+      </div>`;
+    grid.appendChild(card);
+  }
+
+  function removeCard(id) {
+    document.querySelector(`.account-card[data-id="${id}"]`)?.remove();
+  }
+
+  function renderAccountCards() {
+    const grid = document.getElementById('accountsGrid');
+    grid.innerHTML = '';
+    accountCardCount = 0;
+    accounts.forEach(a => addAccountCard(a));
+  }
+
+  function saveAccounts() {
+    const cards = document.querySelectorAll('.account-card');
+    const parsed = [];
+    let valid = true;
+    cards.forEach(card => {
+      const name = card.querySelector('.acct-name').value.trim();
+      const balance = parseFloat(card.querySelector('.acct-balance').value);
+      if (!name || isNaN(balance)) { valid = false; return; }
+      parsed.push({ name, balance });
+    });
+    if (!valid || parsed.length === 0) { showToast('Fill in all account names and balances.', true); return; }
+    accounts = parsed;
+    localStorage.setItem('flow_accounts', JSON.stringify(accounts));
+    syncToSheets({ type: 'INIT_ACCOUNTS', accounts });
+    showToast('Accounts saved!');
+    showView('dashboard', document.querySelectorAll('.nav-tab')[0]);
+    renderDashboard();
+  }
+
+  // ─── DASHBOARD ────────────────────────────────────
+  function renderDashboard() {
+    const total = accounts.reduce((s, a) => s + a.balance, 0);
+    document.getElementById('netWorth').textContent = formatNaira(total);
+    document.getElementById('accountsRow').innerHTML = accounts.map(a => `
+      <div class="account-balance-card">
+        <div class="account-name">${a.name}</div>
+        <div class="account-balance">${formatNaira(a.balance)}</div>
+      </div>`).join('');
+    document.getElementById('txAccount').innerHTML = accounts.map((a,i) => `<option value="${i}">${a.name}</option>`).join('');
+  }
+
+  // ─── TRANSACTIONS ─────────────────────────────────
+  function setTxType(type) {
+    txType = type;
+    document.getElementById('btnIncome').classList.toggle('active', type === 'income');
+    document.getElementById('btnExpense').classList.toggle('active', type === 'expense');
+  }
+
+  function logTransaction() {
+    const amount = parseFloat(document.getElementById('txAmount').value);
+    const desc = document.getElementById('txDesc').value.trim();
+    const acctIdx = parseInt(document.getElementById('txAccount').value);
+    if (isNaN(amount)||amount<=0) { showToast('Enter a valid amount.', true); return; }
+    if (!desc) { showToast('Add a description.', true); return; }
+    if (isNaN(acctIdx)) { showToast('Select an account.', true); return; }
+    const acct = accounts[acctIdx];
+    if (txType==='expense' && amount>acct.balance) { showToast(`Insufficient balance in ${acct.name}.`, true); return; }
+    if (txType==='income') accounts[acctIdx].balance += amount;
+    else accounts[acctIdx].balance -= amount;
+    const tx = { id: Date.now(), type:txType, amount, desc, account:acct.name, date: new Date().toISOString() };
+    transactions.unshift(tx);
+    localStorage.setItem('flow_accounts', JSON.stringify(accounts));
+    localStorage.setItem('flow_transactions', JSON.stringify(transactions));
+    syncToSheets({ type:'LOG_TRANSACTION', transaction:tx, accounts });
+    document.getElementById('txAmount').value = '';
+    document.getElementById('txDesc').value = '';
+    renderDashboard();
+    showToast(txType==='income' ? '↑ Income logged!' : '↓ Expense logged!');
+  }
+
+  // ─── HISTORY ──────────────────────────────────────
+  function renderHistory() {
+    const list = document.getElementById('txList');
+    if (!transactions.length) {
+      list.innerHTML = `<div class="empty-state"><div class="icon">📋</div>No transactions yet.</div>`; return;
+    }
+    list.innerHTML = transactions.map(tx => `
+      <div class="tx-item">
+        <div class="tx-left">
+          <div class="tx-dot ${tx.type}"></div>
+          <div>
+            <div class="tx-desc">${tx.desc}</div>
+            <div class="tx-meta">${tx.account} · ${formatDate(tx.date)}</div>
+          </div>
+        </div>
+        <div class="tx-amount ${tx.type}">${tx.type==='income'?'+':'-'}${formatNaira(tx.amount)}</div>
+      </div>`).join('');
+  }
+
+  function clearHistory() {
+    if (!confirm('Clear all transaction history? Account balances stay.')) return;
+    transactions = [];
+    localStorage.setItem('flow_transactions', JSON.stringify(transactions));
+    renderHistory();
+    showToast('History cleared.');
+  }
+
+  // ─── SYNC ─────────────────────────────────────────
+  async function syncToSheets(payload) {
+    if (APPS_SCRIPT_URL === 'APPS_SCRIPT_URL') { setSyncStatus('local'); return; }
+    setSyncStatus('syncing');
+    try {
+      await fetch(APPS_SCRIPT_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+      setSyncStatus('synced');
+    } catch(e) { setSyncStatus('local'); }
+  }
+
+  function setSyncStatus(s) {
+    const dot = document.getElementById('syncDot');
+    const lbl = document.getElementById('syncLabel');
+    dot.className = 'sync-dot';
+    if (s==='synced') { dot.classList.add('synced'); lbl.textContent='SYNCED'; }
+    else if (s==='syncing') { dot.classList.add('syncing'); lbl.textContent='SYNCING'; }
+    else lbl.textContent='LOCAL';
+  }
+
+  // ─── UTILS ────────────────────────────────────────
+  function formatNaira(n) {
+    return '₦'+Number(n).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+
+  function formatDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'}) +
+      ' · ' + d.toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'});
+  }
+
+  function showToast(msg, isError=false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast'+(isError?' error':'');
+    setTimeout(()=>t.classList.add('show'),10);
+    setTimeout(()=>t.classList.remove('show'),3000);
+  }
+
+  // ─── BOOT ─────────────────────────────────────────
+  initLogin();
+</script>
+</body>
+</html>
